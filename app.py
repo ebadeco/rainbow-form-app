@@ -10,34 +10,56 @@ st.set_page_config(page_title="Rainbow Form Portal", page_icon="🎨", layout="w
 
 st.markdown("""
     <style>
+    /* 1. HIDE STREAMLIT BRANDING */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
-    .stApp {background-color: #f8f9fa;}
+    
+    /* 2. BACKGROUND & FONTS */
+    .stApp {
+        background-color: #ffffff; /* Matches Shopify White Background */
+        font-family: 'Helvetica', 'Arial', sans-serif; /* Matches standard web fonts */
+    }
+
+    /* 3. PRODUCT CARDS (Shadows & Borders) */
     div[data-testid="column"] {
-        background-color: white;
+        background-color: #ffffff;
         padding: 20px;
-        border-radius: 15px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-        border: 1px solid #eee;
+        border-radius: 20px;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.08); /* Soft modern shadow */
+        border: 1px solid #f0f0f0;
+        transition: transform 0.2s;
     }
-    .price-tag {
-        font-size: 1.2em;
-        font-weight: bold;
-        color: #d32f2f;
-        margin-bottom: 10px;
+    div[data-testid="column"]:hover {
+        transform: translateY(-5px); /* Slight lift effect on hover */
     }
-    .original-price {
-        text-decoration: line-through;
-        color: #757575;
-        font-size: 0.8em;
-        margin-right: 5px;
-    }
+
+    /* 4. BUTTONS (The Rainbow Form Look) */
     div.stButton > button {
         width: 100%;
-        border-radius: 8px;
-        font-weight: bold;
-        height: 50px;
+        border-radius: 12px;
+        font-weight: 700;
+        height: 55px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        border: none;
+        background: linear-gradient(90deg, #FF9A9E 0%, #FECFEF 99%, #FECFEF 100%); /* Rainbow-ish Gradient */
+        color: white !important;
+        box-shadow: 0 4px 15px rgba(255, 100, 150, 0.4);
+    }
+    div.stButton > button:hover {
+        background: linear-gradient(90deg, #ff758c 0%, #ff7eb3 100%);
+        box-shadow: 0 6px 20px rgba(255, 100, 150, 0.6);
+        color: white !important;
+    }
+
+    /* 5. PRICE TAGS */
+    .price-tag {
+        font-size: 1.4em;
+        font-weight: 800;
+        color: #2e7d32;
+        margin-bottom: 10px;
+        font-family: 'Courier New', monospace; /* Toy-like font */
     }
     </style>
     """, unsafe_allow_html=True)
@@ -190,7 +212,7 @@ if st.session_state.generated_images:
             
             # Magic Link: Adds Product + Email to Checkout
             url = f"https://rainbowform.com/cart/{color_ids[size]}:1?checkout[email]={st.session_state.user_email}"
-            st.link_button("🛒 Order Color Version", url, type="primary")
+            st.link_button("🛒 Order Full-Color Version", url, type="primary")
 
     # RIGHT: Color Me
     with col_white:
@@ -218,4 +240,4 @@ if st.session_state.generated_images:
             
             # Magic Link: Adds Product + Email to Checkout
             url = f"https://rainbowform.com/cart/{paint_ids[paint]}:1?checkout[email]={st.session_state.user_email}"
-            st.link_button("🛒 Order DIY Version", url, type="primary")
+            st.link_button("🛒 Order DIY White Version", url, type="primary")
