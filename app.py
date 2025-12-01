@@ -18,7 +18,7 @@ st.markdown("""
     /* 2. BACKGROUND & FONTS */
     .stApp {
         background-color: #ffffff; /* Matches Shopify White Background */
-        font-family: 'Helvetica', 'Arial', sans-serif; /* Matches standard web fonts */
+        font-family: 'Helvetica', 'Arial', sans-serif;
     }
 
     /* 3. PRODUCT CARDS (Shadows & Borders) */
@@ -26,12 +26,12 @@ st.markdown("""
         background-color: #ffffff;
         padding: 20px;
         border-radius: 20px;
-        box-shadow: 0 10px 25px rgba(0,0,0,0.08); /* Soft modern shadow */
+        box-shadow: 0 10px 25px rgba(0,0,0,0.08);
         border: 1px solid #f0f0f0;
         transition: transform 0.2s;
     }
     div[data-testid="column"]:hover {
-        transform: translateY(-5px); /* Slight lift effect on hover */
+        transform: translateY(-5px);
     }
 
     /* 4. BUTTONS (The Rainbow Form Look) */
@@ -43,7 +43,7 @@ st.markdown("""
         text-transform: uppercase;
         letter-spacing: 1px;
         border: none;
-        background: linear-gradient(90deg, #FF9A9E 0%, #FECFEF 99%, #FECFEF 100%); /* Rainbow-ish Gradient */
+        background: linear-gradient(90deg, #FF9A9E 0%, #FECFEF 99%, #FECFEF 100%);
         color: white !important;
         box-shadow: 0 4px 15px rgba(255, 100, 150, 0.4);
     }
@@ -59,14 +59,19 @@ st.markdown("""
         font-weight: 800;
         color: #2e7d32;
         margin-bottom: 10px;
-        font-family: 'Courier New', monospace; /* Toy-like font */
+        font-family: 'Courier New', monospace;
+    }
+    .original-price {
+        text-decoration: line-through;
+        color: #999;
+        font-size: 0.7em;
+        margin-right: 8px;
     }
     </style>
     """, unsafe_allow_html=True)
 
 # --- 2. SECURE API KEY ---
 try:
-    # SECURE: Looks for the password named "GOOGLE_API_KEY" in the vault
     api_key = st.secrets["GOOGLE_API_KEY"]
 except:
     st.error("⚠️ Server Error: API Key missing. Please check Streamlit Secrets.")
@@ -95,7 +100,12 @@ if 'generated_images' not in st.session_state:
 if not st.session_state.user_email:
     col1, col2, col3 = st.columns([1,2,1])
     with col2:
-        st.image("logo.png", width=300) if logo_data else st.title("Rainbow Form")
+        # FIXED: Proper If/Else block to prevent printing code
+        if logo_data:
+            st.image("logo.png", width=300)
+        else:
+            st.title("Rainbow Form")
+            
         st.markdown("### 👋 Welcome to the Toy Factory!")
         st.write("Enter your email to unlock your **3 Free 3D Designs**.")
         
@@ -110,8 +120,13 @@ if not st.session_state.user_email:
     st.stop()
 
 # --- 6. MAIN TOOL ---
-st.image("logo.png", width=150) if logo_data else st.title("Rainbow Form")
-st.write(f"Logged in as: **{st.session_state.user_email}** | Free Tries: **{st.session_state.credits}/2**")
+# FIXED: Proper If/Else block to prevent printing code
+if logo_data:
+    st.image("logo.png", width=150)
+else:
+    st.title("Rainbow Form")
+
+st.write(f"Logged in as: **{st.session_state.user_email}** | Free Tries: **{st.session_state.credits}/3**")
 
 with st.container():
     uploaded_file = st.file_uploader("Upload your drawing...", type=["jpg", "jpeg", "png"])
@@ -165,13 +180,33 @@ with st.container():
                         inputs_color.append(logo_data)
                         inputs_white.append(logo_data)
 
-                    # Generate
-                    response_color = model.generate_content(inputs_color)
-                    response_white = model.generate_content(inputs_white)
+                    # Generate (With Safety Filter disabled)
+                    safe = [
+                        {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
+                        {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
+                        {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
+                        {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
+                    ]
+                    
+                    response_color = model.generate_content(inputs_color, safety_settings=safe)
+                    response_white = model.generate_content(inputs_white, safety_settings=safe)
+
+                    # Extract Images
+                    img_color = None
+                    if response_color.parts and response_color.parts[0].inline_data:
+                        img_color = response_color.parts[0].inline_data.data
+
+                    img_white = None
+                    if response_white.parts and response_white.parts[0].inline_data:
+                        img_white = response_white.parts[0].inline_data.data
+
+                    # Error Check
+                    if img_color is None or img_white is None:
+                        st.error("⚠️ Generation Incomplete. Note: Billing must be active on your Google Cloud Project for this model.")
 
                     st.session_state.generated_images = {
-                        "color": response_color.parts[0].inline_data.data if response_color.parts and response_color.parts[0].inline_data else None,
-                        "white": response_white.parts[0].inline_data.data if response_white.parts and response_white.parts[0].inline_data else None
+                        "color": img_color,
+                        "white": img_white
                     }
 
                 except Exception as e:
@@ -179,7 +214,7 @@ with st.container():
         else:
             st.error("You are out of credits!")
             # ⬇️ REPLACE WITH YOUR CREDIT PACK ID ⬇️
-            credit_url = f"https://rainbowform.com/cart/REPLACE_WITH_CREDIT_ID:1?checkout[email]={st.session_state.user_email}"
+            credit_url = f"https://rainbowform.com/cart/46397098262776:1?checkout[email]={st.session_state.user_email}"
             st.link_button("⚡ Buy 10 More Credits ($1.99)", credit_url)
 
 # --- 7. RESULTS DISPLAY ---
@@ -203,16 +238,16 @@ if st.session_state.generated_images:
             
             size = st.selectbox("Choose Size", ["Small (5 Inch)", "Medium (6 Inch)", "Large (7 Inch)"], key="s_opt")
             
-            # SHOPIFY IDs (Full Color)
             color_ids = {
                 "Small (5 Inch)": "46397098098936", 
                 "Medium (6 Inch)": "46397098131704", 
                 "Large (7 Inch)": "46397098164472"
             }
-            
-            # Magic Link: Adds Product + Email to Checkout
-            url = f"https://rainbowform.com/cart/{color_ids[size]}:1?checkout[email]={st.session_state.user_email}"
-            st.link_button("🛒 Order Full-Color Version", url, type="primary")
+            if size in color_ids:
+                url = f"https://rainbowform.com/cart/{color_ids[size]}:1?checkout[email]={st.session_state.user_email}"
+                st.link_button("🛒 Order Color Version", url, type="primary")
+        else:
+            st.warning("Preview unavailable.")
 
     # RIGHT: Color Me
     with col_white:
@@ -226,18 +261,15 @@ if st.session_state.generated_images:
             </div>
             """, unsafe_allow_html=True)
             
-            # Removed the 64-Color Option
-            paint = st.selectbox("Choose Set", 
-                                 ["Just the Toy", "+ 12 Color Set", "+ 36 Color Set"], 
-                                 key="p_opt")
+            paint = st.selectbox("Choose Set", ["Just the Toy", "+ 12 Color Set", "+ 36 Color Set"], key="p_opt")
             
-            # SHOPIFY IDs (Color Me - Single Variant IDs)
-            paint_ids = {
+            paint_variant_ids = {
                 "Just the Toy": "46397089677560",
                 "+ 12 Color Set": "46397089710328",
                 "+ 36 Color Set": "46397089743096"
             }
-            
-            # Magic Link: Adds Product + Email to Checkout
-            url = f"https://rainbowform.com/cart/{paint_ids[paint]}:1?checkout[email]={st.session_state.user_email}"
-            st.link_button("🛒 Order DIY White Version", url, type="primary")
+            if paint in paint_variant_ids:
+                 url = f"https://rainbowform.com/cart/{paint_variant_ids[paint]}:1?checkout[email]={st.session_state.user_email}"
+                 st.link_button("🛒 Order DIY Version", url, type="primary")
+        else:
+            st.warning("Preview unavailable.")
