@@ -111,7 +111,7 @@ if not st.session_state.user_email:
 
 # --- 6. MAIN TOOL ---
 st.image("logo.png", width=150) if logo_data else st.title("Rainbow Form")
-st.write(f"Logged in as: **{st.session_state.user_email}** | Free Tries: **{st.session_state.credits}/3**")
+st.write(f"Logged in as: **{st.session_state.user_email}** | Free Tries: **{st.session_state.credits}/2**")
 
 with st.container():
     uploaded_file = st.file_uploader("Upload your drawing...", type=["jpg", "jpeg", "png"])
