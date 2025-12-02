@@ -1,3 +1,5 @@
 streamlit
 google-generativeai
 Pillow
+google-auth
+google-api-python-client
