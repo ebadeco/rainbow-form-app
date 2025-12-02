@@ -6,7 +6,6 @@ import os
 import json
 import datetime
 import uuid
-# New libraries for Drive
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload
@@ -50,14 +49,31 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 2. SECURE SETUP (API + DRIVE) ---
+# --- 2. SECURE SETUP (FIXED FOR TABLE FORMAT) ---
+SCOPES = ['https://www.googleapis.com/auth/drive.file']
+
 try:
+    # 1. Get API Key
     api_key = st.secrets["GOOGLE_API_KEY"]
+    
+    # 2. Get Folder ID
     folder_id = st.secrets["DRIVE_FOLDER_ID"]
-    gcp_info = json.loads(st.secrets["GCP_JSON"])
-    creds = service_account.Credentials.from_service_account_info(gcp_info)
-except:
-    st.error("⚠️ Server Error: Please check Secrets (API Key, Folder ID, GCP JSON).")
+    
+    # 3. Get Google Cloud Credentials (The Fix)
+    # We check if you used the "Foolproof Table" method OR the "JSON String" method
+    if "gcp_service_account" in st.secrets:
+        # You used the Table method (Best)
+        gcp_info = dict(st.secrets["gcp_service_account"])
+    else:
+        # Fallback to JSON string method
+        gcp_info = json.loads(st.secrets["GCP_JSON"])
+        
+    creds = service_account.Credentials.from_service_account_info(
+        gcp_info, scopes=SCOPES
+    )
+except Exception as e:
+    # Show the actual error message so we can debug if it fails again
+    st.error(f"⚠️ Secret Error: {str(e)}")
     st.stop()
 
 # --- DRIVE UPLOAD FUNCTION ---
@@ -69,6 +85,7 @@ def upload_to_drive(file_bytes, file_name, mime_type):
         file = service.files().create(body=file_metadata, media_body=media, fields='id').execute()
         return file.get('id')
     except Exception as e:
+        st.error(f"⚠️ Upload Failed: {e}")
         return None
 
 # --- 3. LOAD LOGO ---
@@ -85,9 +102,8 @@ if os.path.exists("logo.png"):
 # --- 4. SESSION STATE ---
 if 'user_email' not in st.session_state:
     st.session_state.user_email = None
-# UPDATED: Set to 2 Free Tries
 if 'credits' not in st.session_state:
-    st.session_state.credits = 2
+    st.session_state.credits = 2 # Set to 2 Free Tries
 if 'generated_images' not in st.session_state:
     st.session_state.generated_images = None
 if 'current_design_id' not in st.session_state:
@@ -97,7 +113,6 @@ if 'current_design_id' not in st.session_state:
 if not st.session_state.user_email:
     col1, col2, col3 = st.columns([1,2,1])
     with col2:
-        # FIXED: Proper If block to avoid DeltaGenerator error
         if logo_data:
             st.image("logo.png", width=300)
         else:
@@ -115,7 +130,6 @@ if not st.session_state.user_email:
     st.stop()
 
 # --- 6. MAIN TOOL ---
-# FIXED: Proper If block here too
 if logo_data:
     st.image("logo.png", width=150)
 else:
@@ -143,7 +157,7 @@ with st.container():
                     design_ref = f"{safe_email}_{timestamp}_{unique_id}"
                     st.session_state.current_design_id = design_ref
 
-                    # 1. UPLOAD ORIGINAL SKETCH TO DRIVE
+                    # 1. UPLOAD SKETCH
                     upload_to_drive(sketch_bytes, f"{design_ref}_SKETCH.jpg", uploaded_file.type)
 
                     # PROMPTS
@@ -199,15 +213,19 @@ with st.container():
                     img_color = response_color.parts[0].inline_data.data if response_color.parts and response_color.parts[0].inline_data else None
                     img_white = response_white.parts[0].inline_data.data if response_white.parts and response_white.parts[0].inline_data else None
                     
+                    # Check for failure
+                    if img_color is None or img_white is None:
+                        st.error("⚠️ Generation Failed. Billing may be inactive or Image blocked.")
+                    
                     # 2. UPLOAD RESULTS TO DRIVE
                     if img_color:
                         upload_to_drive(img_color, f"{design_ref}_COLOR_PREVIEW.jpg", "image/jpeg")
                     if img_white:
                         upload_to_drive(img_white, f"{design_ref}_WHITE_PREVIEW.jpg", "image/jpeg")
-
-                    if img_color or img_white:
-                        st.toast("✅ Renderings saved to Drive!")
                     
+                    if img_color or img_white:
+                        st.toast("✅ Files saved securely!")
+
                     st.session_state.generated_images = {
                         "color": img_color,
                         "white": img_white
@@ -217,8 +235,8 @@ with st.container():
                     st.error(f"Error: {e}")
         else:
             st.error("You are out of credits!")
-            # ⬇️ REPLACE WITH YOUR CREDIT PACK ID ($2.99) ⬇️
-            credit_url = f"https://rainbowform.com/cart/REPLACE_WITH_CREDIT_ID:1?checkout[email]={st.session_state.user_email}"
+            # ⬇️ REPLACE WITH YOUR CREDIT PACK ID ⬇️
+            credit_url = f"https://rainbowform.com/cart/46397098262776:1?checkout[email]={st.session_state.user_email}"
             st.link_button("⚡ Buy More Credits ($2.99)", credit_url)
 
 # --- 7. RESULTS DISPLAY ---
